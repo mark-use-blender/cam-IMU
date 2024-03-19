@@ -1,8 +1,6 @@
 import cv2
 import numpy as np
-import PIL
-import skimage 
-import time
+
 
 def closest_node(node, nodes,max):
     dist = max
@@ -107,6 +105,7 @@ def segmented_intersections(lines):
 
 
     return intersections
+'''
 def find_dots(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blur = cv2.medianBlur(gray, 5)
@@ -118,6 +117,24 @@ def find_dots(frame):
     segmented = segment_by_angle_kmeans(lines)
     cps = segmented_intersections(segmented)
 
+    return cps, frame
+'''
+def find_dots(frame):
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    dest = cv2.cornerHarris(gray,2,3,0.04)
+    dest = cv2.dilate(dest, None) 
+    dest = cv2.dilate(dest, None) 
+    im = gray - gray
+    im[dest > 0.01 * dest.max()]=[255]
+    contours, _ = cv2.findContours(im, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
+    cps = []
+    for con in contours:
+        M = cv2.moments(con)
+        X = int(M["m10"] / M["m00"])
+        Y = int(M["m01"] / M["m00"])
+        cps.append([X,Y])
+        cv2.circle(frame,(np.int0(X),np.int0(Y)), 5, (0,0,0), -1)
     return cps, frame
 
 lk_params = dict( winSize  = (15, 15), 
