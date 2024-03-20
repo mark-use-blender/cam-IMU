@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-
+import time
 
 def closest_node(node, nodes,max):
     dist = max
@@ -17,8 +17,8 @@ def closest_node(node, nodes,max):
             
 
     return (pnt,dist)
-'''
-def find_dots(frame):
+#'''
+def find_dots2(frame):
     frame= cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     #ret, thresh = cv2.threshold(frame, 100, 255, 0)    
     thresh = cv2.adaptiveThreshold(frame, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C , cv2.THRESH_BINARY,3,3)   
@@ -34,7 +34,7 @@ def find_dots(frame):
             #print (asp)
             if (2<asp<3):
                 cps.append((x,y))
-                cv2.circle(frame,(np.int0(x),np.int0(y)), 5, (0,0,0), -1)
+                cv2.circle(frame,(np.intp(x),np.intp(y)), 5, (0,0,0), -1)
                 #print(x,y)
 
             #cv2.drawContours(thresh,[box],0,(0,255,255),2)
@@ -101,12 +101,12 @@ def segmented_intersections(lines):
                 for line2 in next_group:
                     it = intersection(line1, line2)
                     intersections.append(it) 
-                    cv2.circle(frame,(np.int0(it[0]),np.int0(it[1])), 5, (0,0,0), -1)
+                    cv2.circle(frame,(np.intp(it[0]),np.intp(it[1])), 5, (0,0,0), -1)
 
 
     return intersections
-'''
-def find_dots(frame):
+#'''
+def find_dots1(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blur = cv2.medianBlur(gray, 5)
     adapt_type = cv2.ADAPTIVE_THRESH_GAUSSIAN_C
@@ -116,9 +116,11 @@ def find_dots(frame):
     lines = cv2.HoughLines(bin_img, rho, theta, thresh)
     segmented = segment_by_angle_kmeans(lines)
     cps = segmented_intersections(segmented)
+    for p in cps:
+        cv2.circle(frame,(np.intp(p[0]),np.intp(p[1])), 5, (0,0,0), -1)
 
     return cps, frame
-'''
+#'''
 def find_dots(frame):
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -134,7 +136,7 @@ def find_dots(frame):
         X = int(M["m10"] / M["m00"])
         Y = int(M["m01"] / M["m00"])
         cps.append([X,Y])
-        cv2.circle(frame,(np.int0(X),np.int0(Y)), 5, (0,0,0), -1)
+        cv2.circle(frame,(np.intp(X),np.intp(Y)), 5, (0,0,0), -1)
     return cps, frame
 
 lk_params = dict( winSize  = (15, 15), 
@@ -148,33 +150,68 @@ feature_params = dict( maxCorners = 500,
 
 vid = cv2.VideoCapture(5) 
 ret, frame = vid.read() 
-
-poi,frame = find_dots(frame)
+frame0 = frame.copy()
+frame1 = frame.copy()
+frame2 = frame.copy()
+poi0, frame0 = find_dots(frame0)
+poi1, frame1 = find_dots1(frame1)
+poi2, frame2 = find_dots2(frame2)
 
 while(True): 
       
     # Capture the video frame 
     # by frame 
-    dists =[]
-    lpoi = poi
+    dists0 =[]
+    dists1 =[]
+    dists2 =[]
+    lpoi0 = poi0
+    lpoi1 = poi1
+    lpoi2 = poi2
+
     ret, frame = vid.read() 
-    poi, frame = find_dots(frame)
-    if (len(poi)>7 and len(lpoi)>7):
+    frame0 = frame.copy()
+    frame1 = frame.copy()
+    frame2 = frame.copy()
+    poi0, frame0 = find_dots(frame0)
+    poi1, frame1 = find_dots1(frame1)
+    poi2, frame2 = find_dots2(frame2)
+    if (len(poi0)>7 and len(lpoi0)>7):
 
 
-        for point in poi:
-            no,dis = closest_node(point,lpoi,100)
-            if (dis < 10):
-                dists.append(dis)
-    mean=(np.mean(dists))
-            
+        for point0 in poi0:
+            no0,dis0 = closest_node(point0,lpoi0,100)
+            if (dis0 < 10):
+                dists0.append(dis0)
+    mean0=(np.mean(dists0))
+
+    if (len(poi1)>7 and len(lpoi1)>7):
+
+
+        for point1 in poi1:
+            no1,dis1 = closest_node(point1,lpoi1,100)
+            if (dis1 < 10):
+                dists1.append(dis1)
+    mean1=(np.mean(dists1))
                 
+    if (len(poi2)>7 and len(lpoi2)>7):
 
+
+        for point2 in poi2:
+            no2,dis2 = closest_node(point2,lpoi2,100)
+            if (dis2 < 10):
+                dists2.append(dis2)
+    mean2=(np.mean(dists2))
+                
     #print(cont)
     
-    print("frame",mean)
-    cv2.imshow("frame", frame)
-    #time.sleep(1)
+    cv2.putText(frame0,str(mean0),(0,100),cv2.FONT_HERSHEY_SIMPLEX ,1,(255, 0, 0) ,2,cv2.LINE_AA)
+    cv2.putText(frame1,str(mean1),(0,100),cv2.FONT_HERSHEY_SIMPLEX ,1,(255, 0, 0) ,2,cv2.LINE_AA)
+    cv2.putText(frame2,str(mean2),(0,100),cv2.FONT_HERSHEY_SIMPLEX ,1,(255, 0, 0) ,2,cv2.LINE_AA)
+
+    cv2.imshow("frame0", frame0)
+    cv2.imshow("frame1", frame1)
+    cv2.imshow("frame2", frame2)
+    time.sleep(0.1)
     #print (cont)
     
     
