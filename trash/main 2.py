@@ -5,13 +5,17 @@ import time
 def closest_node(node, nodes,max):
     dist = max
     pnt = []
-    for no in nodes:
-        dis =  ((no[0] - node[0]) ** 2 + (no[1] - node[1]) ** 2) ** 0.5
-        if (dis<dist):
-            dist=dis
-            pnt = no
-    if (dist == max):
-        dist = -1
+    if (len(nodes)<200):
+        for no in nodes:
+            dis =  ((no[0] - node[0]) ** 2 + (no[1] - node[1]) ** 2) ** 0.5
+            if (dis<dist):
+                dist=dis
+                pnt = no
+        if (dist == max):
+            dist = 1000
+            pnt = None
+    else:
+        dist = 1000
         pnt = None
 
             
@@ -56,7 +60,8 @@ def segment_by_angle_kmeans(lines, k=2, **kwargs):
     criteria = kwargs.get('criteria', (default_criteria_type, 10, 1.0))
     flags = kwargs.get('flags', cv2.KMEANS_RANDOM_CENTERS)
     attempts = kwargs.get('attempts', 10)
-
+    if (type(lines)=='NoneType'):
+        pass
     # returns angles in [0, pi] in radians
     angles = np.array([line[0][1] for line in lines])
     # multiply the angles by two and find coordinates of that angle
@@ -87,7 +92,10 @@ def intersection(line1, line2):
         [np.cos(theta2), np.sin(theta2)]
     ])
     b = np.array([[rho1], [rho2]])
-    x0, y0 = np.linalg.solve(A, b)
+    try:
+        x0, y0 = np.linalg.solve(A, b)
+    except:
+        return []
     x0, y0 = int(np.round(x0)), int(np.round(y0))
     return [x0, y0]
 
@@ -96,12 +104,15 @@ def segmented_intersections(lines):
     """Finds the intersections between groups of lines."""
 
     intersections = []
-    for i, group in enumerate(lines[:-1]):
-        for next_group in lines[i+1:]:
-            for line1 in group:
-                for line2 in next_group:
-                    it = intersection(line1, line2)
-                    intersections.append(it) 
+    if(len(lines[0])<100 and len(lines[1])<100 ):
+        for i, group in enumerate(lines[:-1]):
+            for next_group in lines[i+1:]:
+                for line1 in group:
+                    for line2 in next_group:
+                        it = intersection(line1, line2)
+                        if (it==[]):
+                            continue
+                        intersections.append(it) 
 
 
 
@@ -115,7 +126,13 @@ def find_dots1(frame):
     bin_img = cv2.adaptiveThreshold(blur, 255, adapt_type, thresh_type, 11, 2)
     rho, theta, thresh = 2, np.pi/180, 400
     lines = cv2.HoughLines(bin_img, rho, theta, thresh)
+    if (type(lines)==type(None)):
+        cps = []
+        return cps, bin_img
     segmented = segment_by_angle_kmeans(lines)
+    if (len(lines)<=1):
+        cps = []
+        return cps, bin_img
     tcps = segmented_intersections(segmented)
     tframe = frame.copy()
     tframe = tframe-tframe
