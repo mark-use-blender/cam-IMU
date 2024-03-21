@@ -338,6 +338,6 @@ while(True):
         break
   
 # After the loop release the cap object 
-vid.release() 
+vod.release() 
 # Destroy all the windows 
 cv2.destroyAllWindows() 
