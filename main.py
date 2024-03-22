@@ -2,6 +2,10 @@ import cv2
 import numpy as np
 import time
 from collections import defaultdict
+# pip install git+https://github.com/nelsond/gridfit
+from gridfit.rect import find_dominant_angle
+from gridfit.rect import fit_grid
+
 def segment_by_angle_kmeans(lines, k=2):    
     if (type(lines)=='NoneType'):
         pass
@@ -151,6 +155,36 @@ def find_dots1(frame):
     bin_img = cv2.adaptiveThreshold(gray, 255, adapt_type, thresh_type, 21, 7)
     rho, theta, thresh = 2, np.pi/180, 400
     lines = cv2.HoughLines(bin_img, rho, theta, thresh)
+    
+    lframe = gray.copy()
+    lframe = lframe-lframe
+    
+    for r_theta in lines:
+        arr = np.array(r_theta[0], dtype=np.float64)
+        r, theta = arr
+        a = np.cos(theta)
+        b = np.sin(theta)
+        x0 = a*r
+        y0 = b*r
+        x1 = int(x0 + 1000*(-b))
+        y1 = int(y0 + 1000*(a))
+        x2 = int(x0 - 1000*(-b))
+        y2 = int(y0 - 1000*(a))
+        cv2.line(lframe, (x1, y1), (x2, y2), (255, 255, 255), 2)
+    lframe=cv2.bitwise_not(lframe) 
+    lcontours, _ = cv2.findContours(lframe, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
+    lcps = []
+    try:
+        for cont in lcontours:
+            ((x, y), (width, height), angle) = cv2.minAreaRect(cont)
+            if (angle < 14):
+                width, height= height,width
+            asp=height/width
+            if (2<asp<3):
+                lcps.append((x,y))
+    except:
+        pass
+
     if (type(lines)==type(None)):
         cps = []
         return cps, gray
@@ -214,9 +248,12 @@ def compare(poi,lpoi, minpnt,maxpnt,maxdis,frame):
                 dys.append(dy)
                 frame=cv2.line(frame,point,no,(0,255,0),3)
     if (dists!=[]and dxs!=[]and  dys!=[]):
-        mean=(np.mean(dists))
-        meanx=(np.mean(dxs))
-        meany=(np.mean(dys))
+        dists=np.sort(dists)
+        dxs=np.sort(dxs)
+        dys=np.sort(dys)
+        mean=(dists[np.intp(len(dists)/2)])
+        meanx=(dxs[np.intp(len(dxs)/2)])
+        meany=(dys[np.intp(len(dys)/2)])
         
     else:
         mean=0
@@ -236,9 +273,13 @@ def comparekp(poi,lpoi, minpnt,maxpnt,maxdis,frame):
                 dxs.append(dx)
                 dys.append(dy)
                 frame=cv2.line(frame,point.pt,no.pt,(0,255,0),3)
-    mean=(np.mean(dists))
-    meanx=(np.mean(dxs))
-    meany=(np.mean(dys))
+    dists=np.sort(dists)
+    dxs=np.sort(dxs)
+    dys=np.sort(dys)
+
+    mean=(dists[np.intp(len(dists)/2)])
+    meanx=(dxs[np.intp(len(dxs)/2)])
+    meany=(dys[np.intp(len(dys)/2)])
     return mean,meanx,meany
 
 
@@ -261,7 +302,7 @@ while(True):
       
     # Capture the video frame 
     # by frame 
-    maxdis = 20
+    maxdis = 50
 
     #lpoi0 = poi0
     lpoi1 = poi1
@@ -284,6 +325,7 @@ while(True):
                 
     # mean0, meanx0, meany0 = compare(poi0, lpoi0,7,100,maxdis)
     mean1, meanx1, meany1 = compare(poi1, lpoi1,7,100,maxdis,frame1)
+
     # mean2, meanx2, meany2 = compare(poi2, lpoi2,7,100,maxdis)
     # mean3, meanx3, meany3 = comparekp(poi3, lpoi3,7,100,maxdis)
     # mean4, meanx4, meany4 = comparekp(poi4, lpoi4,7,100,maxdis)
@@ -324,7 +366,7 @@ while(True):
     # cv2.imshow("frame2", frame2)
     # cv2.imshow("frame3", frame3)
     # cv2.imshow("frame4", frame4)
-    time.sleep(0.1)
+    time.sleep(0.01)
     #print (cont)
     
     
