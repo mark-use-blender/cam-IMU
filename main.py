@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import time
+import math
 from collections import defaultdict
 # pip install git+https://github.com/nelsond/gridfit
 from gridfit.rect import find_dominant_angle
@@ -146,6 +147,29 @@ def find_dots2(frame):
         pass
     return cps, frame
 #'''
+def unScRo(lcps):
+    lcps=lcps[lcps[:, 2].argsort()]
+    sca,ang=lcps[np.intp(len(lcps))][2],lcps[np.intp(len(lcps))][3]
+    return sca,ang
+
+def rotate(p, origin=(0, 0), degrees=0):
+    angle = np.deg2rad(degrees)
+    R = np.array([[np.cos(angle), -np.sin(angle)],
+                  [np.sin(angle),  np.cos(angle)]])
+    o = np.atleast_2d(origin)
+    p = np.atleast_2d(p)
+    return np.squeeze((R @ (p.T-o.T) + o.T).T)
+
+def scaling(sca, cps, center_point):
+    scaled_pts = []
+    for p in cps:
+        tr_pointx, tr_pointy = p[0]-center_point[0], p[1]-center_point[1]
+        sc_pointx, sc_pointy = tr_pointx * sca, tr_pointy * sca
+        scaled_pt = [sc_pointx + center_point[0], sc_pointy + center_point[1]]
+            # draw the pt  
+        scaled_pts.append(scaled_pt)
+    return scaled_pts
+
 
 def find_dots1(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -155,43 +179,50 @@ def find_dots1(frame):
     bin_img = cv2.adaptiveThreshold(gray, 255, adapt_type, thresh_type, 21, 7)
     rho, theta, thresh = 2, np.pi/180, 400
     lines = cv2.HoughLines(bin_img, rho, theta, thresh)
-    
-    lframe = gray.copy()
-    lframe = lframe-lframe
-    
-    for r_theta in lines:
-        arr = np.array(r_theta[0], dtype=np.float64)
-        r, theta = arr
-        a = np.cos(theta)
-        b = np.sin(theta)
-        x0 = a*r
-        y0 = b*r
-        x1 = int(x0 + 1000*(-b))
-        y1 = int(y0 + 1000*(a))
-        x2 = int(x0 - 1000*(-b))
-        y2 = int(y0 - 1000*(a))
-        cv2.line(lframe, (x1, y1), (x2, y2), (255, 255, 255), 2)
-    lframe=cv2.bitwise_not(lframe) 
-    lcontours, _ = cv2.findContours(lframe, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
     lcps = []
-    try:
-        for cont in lcontours:
-            ((x, y), (width, height), angle) = cv2.minAreaRect(cont)
-            if (angle < 14):
-                width, height= height,width
-            asp=height/width
-            if (2<asp<3):
-                lcps.append((x,y))
-    except:
-        pass
+    cps = []
+    rcps=[]
 
+    # lframe = gray.copy()
+    # lframe = lframe-lframe
+    # if (type(lines)==type(None)):
+    #     cps = []
+    #     return cps, gray, rcps
+    # for r_theta in lines:
+    #     arr = np.array(r_theta[0], dtype=np.float64)
+    #     r, theta = arr
+    #     a = np.cos(theta)
+    #     b = np.sin(theta)
+    #     x0 = a*r
+    #     y0 = b*r
+    #     x1 = int(x0 + 1000*(-b))
+    #     y1 = int(y0 + 1000*(a))
+    #     x2 = int(x0 - 1000*(-b))
+    #     y2 = int(y0 - 1000*(a))
+    #     cv2.line(lframe, (x1, y1), (x2, y2), (255, 255, 255), 2)
+    # lframe=cv2.bitwise_not(lframe) 
+    # lcontours, _ = cv2.findContours(lframe, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
+    
+    
+    # for cont in lcontours:
+    #     ((x, y), (width, height), angle) = cv2.minAreaRect(cont)
+    #     asp=0
+    #     if (angle < 14 and height<0 and width<0):
+    #         width, height= height,width
+    #         asp=height/width
+    #     if (2<asp<3):
+    #         lcps.append([(x,y),cont,np.sqrt(width**2+height**2),angle])
+    # if (len(lcps)<2):
+    #     cps = []
+    #     return cps, gray, rcps
+    # sca,ang=unScRo(lcps)
     if (type(lines)==type(None)):
         cps = []
-        return cps, gray
+        return cps, gray, rcps
     segmented = segment_by_angle_kmeans(lines)
     if (len(lines)<=1):
         cps = []
-        return cps, gray
+        return cps, gray, rcps
     tcps = segmented_intersections(segmented)
     tframe = gray.copy()
     tframe = tframe-tframe
@@ -208,7 +239,23 @@ def find_dots1(frame):
             cv2.circle(frame,(np.intp(X),np.intp(Y)), 5, (0,0,0), -1)
         except:
             continue
-    return cps, frame
+    # h, w = gray.shape
+    # center_point=(h/2,w/2)
+    # rcps = cps
+    # cps = rotate(cps, center_point, ang)
+    # cps = scaling(sca, cps, center_point)
+
+
+
+
+    
+    
+
+
+    
+    return cps, frame, rcps
+
+
 
 fast = cv2.FastFeatureDetector.create(2)
 
@@ -235,7 +282,7 @@ def find_dots4(frame):
     cv2.drawKeypoints(bin_img, cps,None,(0,0,255))
     return cps, bin_img
 
-def compare(poi,lpoi, minpnt,maxpnt,maxdis,frame):
+def compare(poi,lpoi, minpnt,maxpnt,maxdis):
     dists =[]
     dxs =[]
     dys =[]
@@ -246,7 +293,7 @@ def compare(poi,lpoi, minpnt,maxpnt,maxdis,frame):
                 dists.append(dis)
                 dxs.append(dx)
                 dys.append(dy)
-                frame=cv2.line(frame,point,no,(0,255,0),3)
+                
     if (dists!=[]and dxs!=[]and  dys!=[]):
         dists=np.sort(dists)
         dxs=np.sort(dxs)
@@ -260,6 +307,22 @@ def compare(poi,lpoi, minpnt,maxpnt,maxdis,frame):
         meanx=0
         meany=0
     return mean,meanx,meany
+
+def compareD(poi,lpoi, minpnt,maxpnt,maxdis,frame):
+    dists =[]
+    dxs =[]
+    dys =[]
+    if (len(poi)>minpnt and len(lpoi)>minpnt):
+        for point in poi:
+            no,dis,dx,dy  = closest_node(point,lpoi,maxpnt)
+            if (dis < maxdis):
+                dists.append(dis)
+                dxs.append(dx)
+                dys.append(dy)
+                frame=cv2.line(frame,point,no,(0,255,0),3)
+    return frame
+    
+
 
 def comparekp(poi,lpoi, minpnt,maxpnt,maxdis,frame):
     dists =[]
@@ -283,7 +346,7 @@ def comparekp(poi,lpoi, minpnt,maxpnt,maxdis,frame):
     return mean,meanx,meany
 
 
-vod = cv2.VideoCapture(5) 
+vod = cv2.VideoCapture(2) 
 ret, frame = vod.read() 
 # frame0 = frame.copy()
 frame1 = frame.copy()
@@ -291,7 +354,7 @@ frame1 = frame.copy()
 # frame3 = frame.copy()
 # frame4 = frame.copy()
 # poi0, frame0 = find_dots0(frame0)
-poi1, frame1 = find_dots1(frame1)
+poi1, frame1,rpoi1 = find_dots1(frame1)
 # poi2, frame2 = find_dots2(frame2)
 # poi3, frame3 = find_dots3(frame3)
 # poi4, frame4 = find_dots4(frame4)
@@ -306,6 +369,8 @@ while(True):
 
     #lpoi0 = poi0
     lpoi1 = poi1
+    rlpoi1 = rpoi1
+
     # lpoi2 = poi2
     # lpoi3 = poi3
     # lpoi4 = poi4
@@ -317,14 +382,15 @@ while(True):
     # frame3 = frame.copy()
     # frame4 = frame.copy()
     # poi0, frame0 = find_dots0(frame0)
-    poi1, frame1 = find_dots1(frame1)
+    poi1, frame1, rpoi1 = find_dots1(frame1)
     # poi2, frame2 = find_dots2(frame2)
     # poi3, frame3 = find_dots3(frame3)
     # poi4, frame4 = find_dots4(frame4)
     
                 
     # mean0, meanx0, meany0 = compare(poi0, lpoi0,7,100,maxdis)
-    mean1, meanx1, meany1 = compare(poi1, lpoi1,7,100,maxdis,frame1)
+    mean1, meanx1, meany1 = compare(poi1, lpoi1,7,100,maxdis)
+    frame1 = compareD(rpoi1, rlpoi1,7,100,maxdis,frame1)
 
     # mean2, meanx2, meany2 = compare(poi2, lpoi2,7,100,maxdis)
     # mean3, meanx3, meany3 = comparekp(poi3, lpoi3,7,100,maxdis)
