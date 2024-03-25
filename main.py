@@ -3,9 +3,7 @@ import numpy as np
 import time
 import math
 from collections import defaultdict
-# pip install git+https://github.com/nelsond/gridfit
-from gridfit.rect import find_dominant_angle
-from gridfit.rect import fit_grid
+
 
 def segment_by_angle_kmeans(lines, k=2):    
     if (type(lines)=='NoneType'):
