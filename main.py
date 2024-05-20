@@ -5,8 +5,7 @@ import math
 from collections import defaultdict
 # pip install git+https://github.com/nelsond/gridfit
 
-from ros2 import rclpy
-#pip
+from ros2 import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 
