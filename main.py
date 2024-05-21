@@ -4,11 +4,11 @@ import time
 import math
 from collections import defaultdict
 # pip install git+https://github.com/nelsond/gridfit
-
+'''
 from ros2 import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
-
+#'''
 #find the dots in the frame
 def find_dots(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -215,7 +215,7 @@ def calcRel(lsca,lang,sca,ang):
         ang=ang-360
     ang=ang-lang
     return sca,ang
-
+'''
 class ImageSubscriber(Node):
     def __init__(self):
         super().__init__('image_subscriber')
@@ -294,11 +294,11 @@ class ImageSubscriber(Node):
     # send result to main node
     def send_result(self):
         return self.dx1, self.dy1, self.alt, self.accu_angle
-    
+#'''    
 #test the code with webcam
 class webcam:
     def __init__(self):
-        self.video = cv2.VideoCapture(0)
+        self.video = cv2.VideoCapture("http://localhost:8001/?action=stream")
         self.prev_frame = None
         self.prev_dots = None
         self.prev_rdots = None
